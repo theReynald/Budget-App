@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --color-primary: #1F2D3D;
+    --color-accent: #F26522;
+    --color-success: #E3F4E8;
+    --color-danger: #C0392B;
+}
+
+body {
+    font-family: system-ui, Arial, sans-serif;
+}
+
+.table-card {
+    @apply bg-white rounded-lg shadow-sm p-4 border border-gray-200;
+}
+
+.input {
+    @apply border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent;
+}
+
+.btn {
+    @apply inline-flex items-center gap-1 px-3 py-1.5 rounded text-sm font-medium bg-primary text-white hover:bg-opacity-90 disabled:opacity-50;
+}
+
+.btn-accent {
+    @apply bg-accent text-white hover:bg-orange-500;
+}
+
+.badge-danger {
+    @apply text-danger;
+}
+
+.fade-placeholder {
+    @apply text-gray-400 italic;
+}

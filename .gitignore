@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Builds / caches
+dist/
+.next/
+out/
+build/
+.esbuild/
+.vite
+coverage/
+tailwind-cache/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+.env.*
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Misc
+*.log
+
+# Optional lockfiles (uncomment one if you prefer not to commit)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
