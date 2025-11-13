@@ -72,3 +72,77 @@ export interface AIExpandResponse {
 export interface AIErrorResponse {
     error: string;
 }
+
+// === Smart Budget Recommendations & AI Financial Advisor Types ===
+
+export interface CategorySpending {
+    category: string;
+    amount: number;
+    percentage: number;
+}
+
+export interface BudgetAnalysis {
+    totalIncome: number;
+    totalExpenses: number;
+    netSavings: number;
+    savingsRate: number;
+    categoryBreakdown: CategorySpending[];
+    recommendations: string[];
+    insights: string[];
+    alerts: string[];
+}
+
+export interface ChatMessage {
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+}
+
+export interface ChatRequest {
+    message: string;
+    context?: {
+        startingBalance: number;
+        transactions: Transaction[];
+    };
+}
+
+export interface ChatResponse {
+    message: string;
+    model: string;
+    timestamp: string;
+}
+
+export interface MonthlyReport {
+    month: string;
+    summary: string;
+    financialHealth: 'excellent' | 'good' | 'fair' | 'needs-attention';
+    keyMetrics: {
+        income: number;
+        expenses: number;
+        savings: number;
+        savingsRate: number;
+    };
+    categoryInsights: {
+        category: string;
+        spent: number;
+        trend: 'up' | 'down' | 'stable';
+        recommendation: string;
+    }[];
+    actionItems: string[];
+    goalsProgress?: {
+        goal: string;
+        progress: number;
+    }[];
+    generatedAt: string;
+    model: string;
+}
+
+export interface AnalyzeBudgetRequest {
+    startingBalance: number;
+    transactions: Transaction[];
+}
+
+export interface AnalyzeBudgetResponse {
+    analysis: BudgetAnalysis;
+    cached?: boolean;
+}

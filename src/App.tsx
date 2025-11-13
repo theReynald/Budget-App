@@ -21,6 +21,9 @@ import { nanoid } from 'nanoid';
 import { Transaction, TransactionType } from './types';
 import { computeTotals, computeEndingBalance, formatCurrency } from './lib/calculations';
 import TipOfDay from './components/TipOfDay';
+import BudgetRecommendations from './components/BudgetRecommendations';
+import FinancialAdvisorChat from './components/FinancialAdvisorChat';
+import MonthlyReport from './components/MonthlyReport';
 
 /**
  * Seed demo data shown on initial load. In a production scenario this
@@ -126,6 +129,12 @@ export default function App() {
 
             {/* Tip of the Day educational panel */}
             <TipOfDay />
+
+            {/* Smart Budget Recommendations */}
+            <BudgetRecommendations startingBalance={startingBalance} transactions={transactions} />
+
+            {/* AI Financial Advisor Chat */}
+            <FinancialAdvisorChat startingBalance={startingBalance} transactions={transactions} />
 
             {/* Summary statistic cards */}
             <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -237,6 +246,9 @@ export default function App() {
                     </tbody>
                 </table>
             </section>
+
+            {/* Monthly Report */}
+            <MonthlyReport startingBalance={startingBalance} transactions={transactions} />
 
             {/* Footer notes */}
             <footer className="pt-4 text-xs text-center text-gray-400">
