@@ -21,6 +21,7 @@ import { nanoid } from 'nanoid';
 import { Transaction, TransactionType } from './types';
 import { computeTotals, computeEndingBalance, formatCurrency } from './lib/calculations';
 import TipOfDay from './components/TipOfDay';
+import { Dashboard } from './components/Dashboard/Dashboard';
 
 /**
  * Seed demo data shown on initial load. In a production scenario this
@@ -74,6 +75,7 @@ export default function App() {
     // ----------------------------
     const [startingBalance, setStartingBalance] = useState(500); // Editable baseline number
     const [transactions, setTransactions] = useState<Transaction[]>(demoTransactions); // Mutable list of entries
+    const [activeTab, setActiveTab] = useState<'transactions' | 'dashboard'>('transactions'); // Tab navigation
     const [form, setForm] = useState({
         type: 'expense' as TransactionType,
         description: '',
@@ -116,33 +118,65 @@ export default function App() {
     }
 
     return (
-        <main className="mx-auto max-w-3xl p-6 space-y-8">
+        <main className="mx-auto max-w-7xl p-6 space-y-8">
             <header>
                 <h1 className="text-3xl font-bold tracking-tight text-primary">Monthly Budget</h1>
                 <p className="text-sm text-gray-500 mt-1">
-                    Starter interface – add income & expenses to see totals update. Replace this with your real UI.
+                    Track your income & expenses and visualize your financial trends
                 </p>
             </header>
 
+            {/* Tab Navigation */}
+            <div className="flex gap-2 border-b border-gray-200">
+                <button
+                    onClick={() => setActiveTab('transactions')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+                        activeTab === 'transactions'
+                            ? 'border-accent text-accent'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    Transactions
+                </button>
+                <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+                        activeTab === 'dashboard'
+                            ? 'border-accent text-accent'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    📊 Dashboard
+                </button>
+            </div>
+
             {/* Tip of the Day educational panel */}
-            <TipOfDay />
+            {activeTab === 'transactions' && <TipOfDay />}
 
-            {/* Summary statistic cards */}
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatCard label="Starting" value={formatCurrency(startingBalance)} />
-                <StatCard label="Income" value={formatCurrency(incomeTotal)} positive />
-                <StatCard label="Expenses" value={formatCurrency(expenseTotal)} negative />
-            </section>
+            {/* Dashboard View */}
+            {activeTab === 'dashboard' && (
+                <Dashboard transactions={transactions} startingBalance={startingBalance} />
+            )}
 
-            {/* Centered ending balance highlight */}
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="sm:col-span-1" />
-                <StatCard label="Ending Balance" value={formatCurrency(endingBalance)} highlight />
-                <div className="sm:col-span-1" />
-            </section>
+            {/* Transactions View */}
+            {activeTab === 'transactions' && (
+                <>
+                    {/* Summary statistic cards */}
+                    <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <StatCard label="Starting" value={formatCurrency(startingBalance)} />
+                        <StatCard label="Income" value={formatCurrency(incomeTotal)} positive />
+                        <StatCard label="Expenses" value={formatCurrency(expenseTotal)} negative />
+                    </section>
 
-            {/* Transaction entry form */}
-            <form onSubmit={addTransaction} className="bg-white shadow rounded-md p-4 space-y-4 border border-gray-100">
+                    {/* Centered ending balance highlight */}
+                    <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="sm:col-span-1" />
+                        <StatCard label="Ending Balance" value={formatCurrency(endingBalance)} highlight />
+                        <div className="sm:col-span-1" />
+                    </section>
+
+                    {/* Transaction entry form */}
+                    <form onSubmit={addTransaction} className="bg-white shadow rounded-md p-4 space-y-4 border border-gray-100">
                 <h2 className="font-semibold text-lg">Add Transaction</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                     <div>
@@ -205,8 +239,8 @@ export default function App() {
                 </div>
             </form>
 
-            {/* Transactions table */}
-            <section className="bg-white shadow rounded-md border border-gray-100 overflow-hidden">
+                    {/* Transactions table */}
+                    <section className="bg-white shadow rounded-md border border-gray-100 overflow-hidden">
                 <table className="w-full text-sm">
                     <thead className="bg-gray-100 text-xs uppercase tracking-wide text-gray-600">
                         <tr>
@@ -237,12 +271,13 @@ export default function App() {
                     </tbody>
                 </table>
             </section>
+                </>
+            )}
 
             {/* Footer notes */}
             <footer className="pt-4 text-xs text-center text-gray-400">
                 <p>
-                    Placeholder demo. Customize this UI, add persistence (localStorage / backend), charts, and category
-                    management next.
+                    Budget tracking with visual insights. Add transactions to see charts update in real-time.
                 </p>
             </footer>
         </main>
