@@ -72,3 +72,27 @@ export interface AIExpandResponse {
 export interface AIErrorResponse {
     error: string;
 }
+
+// === Budget Goals & Progress Tracking Types ===
+export interface BudgetGoal {
+    category: string;
+    monthlyLimit: number;
+    month: string; // YYYY-MM format
+}
+
+export interface BudgetProgress {
+    category: string;
+    spent: number;
+    limit: number;
+    percentage: number;
+    remaining: number;
+    status: 'safe' | 'warning' | 'exceeded';
+}
+
+export interface BudgetAlert {
+    category: string;
+    type: 'warning' | 'exceeded';
+    spent: number;
+    limit: number;
+    message: string;
+}
