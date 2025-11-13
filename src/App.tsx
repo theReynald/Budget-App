@@ -21,6 +21,7 @@ import { nanoid } from 'nanoid';
 import { Transaction, TransactionType } from './types';
 import { computeTotals, computeEndingBalance, formatCurrency } from './lib/calculations';
 import TipOfDay from './components/TipOfDay';
+import BudgetGoals from './components/BudgetGoals';
 
 /**
  * Seed demo data shown on initial load. In a production scenario this
@@ -126,6 +127,9 @@ export default function App() {
 
             {/* Tip of the Day educational panel */}
             <TipOfDay />
+
+            {/* Budget Goals & Progress Tracking */}
+            <BudgetGoals transactions={transactions} />
 
             {/* Summary statistic cards */}
             <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">

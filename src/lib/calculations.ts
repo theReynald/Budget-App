@@ -1,4 +1,4 @@
-import { Transaction, Totals, TransactionType } from '../types';
+import { Transaction, Totals, TransactionType, BudgetGoal, BudgetProgress } from '../types';
 
 export function computeTotals(transactions: Transaction[]): Totals {
     return transactions.reduce(
@@ -52,4 +52,56 @@ export function formatCurrency(n: number): string {
 
 export function round1(n: number): number {
     return Math.round(n * 10) / 10;
+}
+
+/**
+ * Calculate budget progress for all categories with goals
+ */
+export function calculateBudgetProgress(
+    transactions: Transaction[],
+    goals: BudgetGoal[],
+    currentMonth: string
+): BudgetProgress[] {
+    // Filter transactions for current month and expenses only
+    const monthExpenses = transactions.filter(t => {
+        if (t.type !== 'expense') return false;
+        const txMonth = t.date.slice(0, 7); // Extract YYYY-MM
+        return txMonth === currentMonth;
+    });
+
+    // Group expenses by category
+    const categorySpending = groupByCategory(monthExpenses, 'expense');
+    const spendingMap = new Map(categorySpending.map(c => [c.category, c.total]));
+
+    // Calculate progress for each goal
+    return goals
+        .filter(g => g.month === currentMonth)
+        .map(goal => {
+            const spent = spendingMap.get(goal.category) || 0;
+            const percentage = goal.monthlyLimit > 0 ? (spent / goal.monthlyLimit) * 100 : 0;
+            const remaining = goal.monthlyLimit - spent;
+            
+            let status: 'safe' | 'warning' | 'exceeded' = 'safe';
+            if (spent > goal.monthlyLimit) {
+                status = 'exceeded';
+            } else if (percentage >= 80) {
+                status = 'warning';
+            }
+
+            return {
+                category: goal.category,
+                spent,
+                limit: goal.monthlyLimit,
+                percentage,
+                remaining,
+                status
+            };
+        });
+}
+
+/**
+ * Get current month in YYYY-MM format
+ */
+export function getCurrentMonth(): string {
+    return new Date().toISOString().slice(0, 7);
 }
