@@ -41,6 +41,7 @@ interface TipState {
 export function TipOfDay() {
     const [state, setState] = useState<TipState>({ daily: null, current: null, revealed: false });
     const [altCount, setAltCount] = useState(0); // track how many alternate tips requested
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [expanding, setExpanding] = useState(false);
     const [expansion, setExpansion] = useState<AIExpandedTip | null>(null);
     const [expansionError, setExpansionError] = useState<string | null>(null);
@@ -81,6 +82,7 @@ export function TipOfDay() {
     // Safely read Vite environment variable for API base
     const API_BASE = ((import.meta as unknown) as { env?: Record<string, string> }).env?.VITE_API_BASE || '';
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const expandMore = useCallback(async () => {
         if (!state.current) return;
         const id = state.current.id;
@@ -135,6 +137,7 @@ export function TipOfDay() {
         } finally {
             setExpanding(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.current, API_BASE]);
 
     // hydrate expansion cache if user revisits same tip
@@ -147,6 +150,7 @@ export function TipOfDay() {
                 expansionCacheRef.current[state.current.id] = parsed;
             }
         } catch { /* ignore cache hydration errors */ }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.current]);
 
     return (
