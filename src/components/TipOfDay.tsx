@@ -41,7 +41,6 @@ interface TipState {
 export function TipOfDay() {
     const [state, setState] = useState<TipState>({ daily: null, current: null, revealed: false });
     const [altCount, setAltCount] = useState(0); // track how many alternate tips requested
-    const [apiKey, setApiKey] = useState<string>('');
     const [expanding, setExpanding] = useState(false);
     const [expansion, setExpansion] = useState<AIExpandedTip | null>(null);
     const [expansionError, setExpansionError] = useState<string | null>(null);
@@ -79,8 +78,11 @@ export function TipOfDay() {
         setExpansionError(null);
     }, []);
 
+    // Safely read Vite environment variable for API base
+    const API_BASE = ((import.meta as unknown) as { env?: Record<string, string> }).env?.VITE_API_BASE || '';
+
     const expandMore = useCallback(async () => {
-        if (!state.current || !apiKey) return;
+        if (!state.current) return;
         const id = state.current.id;
         if (expansionCacheRef.current[id]) {
             setExpansion(expansionCacheRef.current[id]);
@@ -89,24 +91,51 @@ export function TipOfDay() {
         setExpanding(true);
         setExpansionError(null);
         try {
-            const resp = await fetch('/api/tips/expand', {
+            const resp = await fetch(`${API_BASE}/api/tips/expand`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tipId: id, apiKey })
+                body: JSON.stringify({ tipId: id })
             });
-            const data = await resp.json();
-            if (!data.ok) throw new Error(data.error || 'Failed to expand');
-            expansionCacheRef.current[id] = data.data;
-            setExpansion(data.data);
+
+            // Defensive parsing: handle empty body, wrong content-type, or invalid JSON
+            const ct = resp.headers.get('content-type') || '';
+            let payload: { ok?: boolean; error?: string; data?: AIExpandedTip } | null = null;
+            if (ct.includes('application/json')) {
+                try {
+                    payload = await resp.json();
+                } catch {
+                    // Attempt to read any residual text for diagnostics
+                    let text = '';
+                    try { text = await resp.text(); } catch { /* ignore – best effort */ }
+                    throw new Error(`Invalid or empty JSON (status ${resp.status}). ${text ? 'Body: ' + text.slice(0, 120) : ''}`);
+                }
+            } else {
+                // Not JSON at all
+                let text = '';
+                try { text = await resp.text(); } catch { /* ignore – best effort */ }
+                throw new Error(`Expected JSON but received '${ct || 'no content-type'}' (status ${resp.status}). ${text.slice(0, 120)}`);
+            }
+
+            if (!resp.ok || !payload?.ok) {
+                throw new Error(payload?.error || `Request failed (${resp.status})`);
+            }
+
+            if (payload.data) {
+                expansionCacheRef.current[id] = payload.data;
+            }
+            setExpansion(payload.data || null);
             try {
-                localStorage.setItem(`budgetApp.expansion.${id}`, JSON.stringify(data.data));
-            } catch { }
-        } catch (e: any) {
-            setExpansionError(e.message);
+                if (payload.data) {
+                    localStorage.setItem(`budgetApp.expansion.${id}`, JSON.stringify(payload.data));
+                }
+            } catch { /* ignore persistence errors */ }
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setExpansionError(msg);
         } finally {
             setExpanding(false);
         }
-    }, [state.current, apiKey]);
+    }, [state.current, API_BASE]);
 
     // hydrate expansion cache if user revisits same tip
     useEffect(() => {
@@ -117,7 +146,7 @@ export function TipOfDay() {
                 const parsed = JSON.parse(raw) as AIExpandedTip;
                 expansionCacheRef.current[state.current.id] = parsed;
             }
-        } catch { }
+        } catch { /* ignore cache hydration errors */ }
     }, [state.current]);
 
     return (
@@ -128,16 +157,6 @@ export function TipOfDay() {
                     <p className="text-xs text-gray-500">Build financial literacy one small concept at a time.</p>
                 </div>
                 <div className="flex gap-2 items-center flex-wrap">
-                    <div className="flex items-center gap-1">
-                        <input
-                            type="password"
-                            value={apiKey}
-                            onChange={e => setApiKey(e.target.value.trim())}
-                            placeholder="API Key"
-                            className="border border-gray-300 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-2 focus:ring-accent"
-                            style={{ width: 140 }}
-                        />
-                    </div>
                     {!state.revealed && (
                         <button
                             onClick={reveal}
@@ -156,7 +175,7 @@ export function TipOfDay() {
                             </button>
                             <button
                                 onClick={expandMore}
-                                disabled={!apiKey || expanding || !state.current}
+                                disabled={expanding || !state.current}
                                 className="px-3 py-1.5 rounded bg-indigo-600 text-white text-xs font-medium disabled:opacity-50 hover:bg-indigo-500 transition"
                             >
                                 {expanding ? 'Loading…' : 'More'}
@@ -196,10 +215,31 @@ export function TipOfDay() {
                         <div className="mt-2 border border-indigo-200 bg-white rounded p-4 space-y-3">
                             <h4 className="text-sm font-semibold text-indigo-700 flex items-center gap-2">
                                 Deeper Dive
-                                <span className="text-[10px] font-normal text-indigo-400">
-                                    {expansion.model || 'AI'}
+                                <span className="text-[10px] font-normal text-indigo-400 px-1 py-0.5 rounded bg-indigo-50 border border-indigo-200">
+                                    {expansion.source === 'fallback' || expansion.model === 'fallback-local'
+                                        ? expansion.reason === 'cached-without-key'
+                                            ? 'Cached (prior OpenRouter answer)'
+                                            : 'Hard coded Answer'
+                                        : expansion.reason === 'cached-without-key'
+                                            ? 'Cached (prior OpenRouter answer)'
+                                            : `Model: ${expansion.model}`}
                                 </span>
                             </h4>
+                            {expansion.reason === 'cached-without-key' && (
+                                <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                                    API key removed after previous generation – showing cached earlier model output.
+                                </div>
+                            )}
+                            {expansion.source === 'fallback' && expansion.reason === 'missing-key' && (
+                                <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                                    No OpenRouter API key configured – using stub fallback.
+                                </div>
+                            )}
+                            {expansion.source === 'fallback' && expansion.reason === 'error' && (
+                                <div className="text-[10px] text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                                    OpenRouter request failed – showing fallback guidance.
+                                </div>
+                            )}
                             <p className="text-xs text-gray-700">{expansion.summary}</p>
                             <p className="text-xs text-gray-600 whitespace-pre-line leading-relaxed">
                                 {expansion.deeperDive}
@@ -249,7 +289,10 @@ export function TipOfDay() {
                                 </div>
                             )}
                             <div className="text-[10px] text-gray-400">
-                                Generated {new Date(expansion.createdAt).toLocaleTimeString()}
+                                Generated {(() => {
+                                    const ts = expansion.createdAt || expansion.generatedAt;
+                                    try { return new Date(ts).toLocaleTimeString(); } catch { return '—'; }
+                                })()}
                             </div>
                             <p className="text-[10px] text-gray-400 italic">Educational content only – not personalized financial advice.</p>
                         </div>

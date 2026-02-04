@@ -1,7 +1,7 @@
 <div align="center">
 	<h1>Budget AI</h1>
 	<p><strong>Monthly budgeting prototype with an AI-augmented Financial "Tip of the Day" expansion.</strong></p>
-	<sub>Vite + React + TypeScript + Tailwind + Express (API) + MCP-ready AI expansion stub</sub>
+	<sub>Vite + React + TypeScript + Tailwind + Express (API) + OpenRouter-powered AI expansion</sub>
 </div>
 
 ---
@@ -14,7 +14,7 @@
 - "Another Tip" randomizer (no duplicates in-session)
 - AI "More" button: expands current tip into deeper structured guidance (summary, deeper dive, key points, action plan, sources)
 - Local caching of expansions per tip to avoid redundant calls
-- MCP (Model Context Protocol) integration **stub** ready: currently simulated; swap with real model/tool invocation
+- Secure server-side OpenRouter integration (no API key in the UI)
 - Clean, component-driven Tailwind styling
 
 ## 🧱 Tech Stack
@@ -24,7 +24,7 @@
 | Front-end | React 18, TypeScript, Tailwind CSS, Vite |
 | State | Local component state (future: Zustand) |
 | Utilities | Custom calculation helpers (totals, ending balance) |
-| AI Integration | Express API + MCP-ready stub (`server/mcpClient.ts`) |
+| AI Integration | Express API + OpenRouter (`server/openrouter.ts`) |
 
 ## 🚀 Getting Started
 
@@ -34,8 +34,8 @@
 npm install
 ```
 
-### 2. (Optional) Configure Environment
-Create a `.env` from the provided `.env.example` if you plan to swap the AI stub with a real model via MCP or vendor SDK:
+### 2. Configure Environment
+Create a `.env` from the provided `.env.example` and add your OpenRouter API key:
 
 ```bash
 cp .env.example .env
@@ -44,9 +44,12 @@ cp .env.example .env
 Variables you may use:
 
 ```
-AI_MODEL=gpt-4o-mini
+AI_MODEL=openai/gpt-4o-mini
+OPENROUTER_API_KEY=sk-...your key...
 PORT=5055
 ```
+
+The frontend no longer asks for an API key. The backend reads `OPENROUTER_API_KEY` from the environment and uses it when you click **More**.
 
 ### 3. Run Dev Servers
 
@@ -67,28 +70,13 @@ Open: http://localhost:5173
 
 ### 4. Use the AI Expansion
 1. Reveal the daily tip
-2. Enter an API key placeholder (any string for the stub)
-3. Click "More" to fetch expanded structured content
+2. Click **More** – the server calls OpenRouter with your secret key (never exposed to the browser)
 
-## 🔌 MCP / Real Model Integration
+## 🔌 AI Prompting Notes
 
-The current implementation in `server/mcpClient.ts` returns a deterministic simulated expansion. To integrate a real model:
+`server/openrouter.ts` sends a structured JSON instruction to OpenRouter asking for: `summary`, `deeperDive`, `keyPoints[]`, `actionPlan[]`, and `sources[]`. If the model does not return valid JSON, the server gracefully falls back to a minimal expansion.
 
-1. Connect to an MCP host (stdio / socket) and call a tool like `text.generate`.
-2. Replace `expandTipViaMCP` logic to forward the prompt and parse structured JSON.
-3. Ensure you sanitize and validate JSON output to match `AIExpandedTip`.
-4. Optionally persist expansions (Redis / file / DB) to reduce inference cost.
-
-### Example Prompt Structure (Simplified)
-```
-You are a concise financial educator.
-Base Tip: <title>
-Category: <category>
-Content: <content>
-Actionable: <optional actionable>
-Return JSON: { summary, deeperDive, keyPoints[], actionPlan[], estimatedTime, sources[] }
-Constraints: No personal financial advice; educational tone.
-```
+To adjust the model or prompt, edit `AI_MODEL` in `.env` and tweak the messages inside `openrouter.ts`.
 
 ## 🗂 Project Structure
 
@@ -102,7 +90,7 @@ src/
 	styles/tokens.css       # Tailwind + design tokens
 server/
 	index.ts                # Express API (expand endpoint)
-	mcpClient.ts            # MCP expansion stub (replace with real integration)
+	openrouter.ts           # OpenRouter integration (expansion logic)
 ```
 
 ## 🧪 Testing (Future)
@@ -118,7 +106,7 @@ Potential test areas:
 - UI state transitions (reveal → another → more)
 
 ## 🔐 Security Notes
-- API key entered in UI is forwarded to backend per request (no persistence) — replace with a secure auth pattern for production.
+- API key is stored only in your local `.env`; never exposed client-side.
 - Add input validation & rate limiting before exposing publicly.
 - Always label AI output as educational (done in UI).
 

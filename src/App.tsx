@@ -18,8 +18,13 @@
  */
 import React, { useMemo, useState } from 'react';
 import { nanoid } from 'nanoid';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
 import { Transaction, TransactionType } from './types';
 import { computeTotals, computeEndingBalance, formatCurrency } from './lib/calculations';
+import TipOfDay from './components/TipOfDay';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 /**
  * Seed demo data shown on initial load. In a production scenario this
@@ -123,18 +128,79 @@ export default function App() {
                 </p>
             </header>
 
-            {/* Summary statistic cards */}
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Tip of the Day educational panel */}
+            <TipOfDay />
+
+            {/* Summary statistic cards - all on one line */}
+            <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <StatCard label="Starting" value={formatCurrency(startingBalance)} />
                 <StatCard label="Income" value={formatCurrency(incomeTotal)} positive />
                 <StatCard label="Expenses" value={formatCurrency(expenseTotal)} negative />
+                <StatCard label="Ending Balance" value={formatCurrency(endingBalance)} highlight />
             </section>
 
-            {/* Centered ending balance highlight */}
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="sm:col-span-1" />
-                <StatCard label="Ending Balance" value={formatCurrency(endingBalance)} highlight />
-                <div className="sm:col-span-1" />
+            {/* Income vs Expenses Pie Chart */}
+            <section className="bg-white shadow rounded-xl border border-gray-100 p-6">
+                <h2 className="font-semibold text-lg mb-4 text-center">Income vs Expenses</h2>
+                <div className="max-w-xs mx-auto">
+                    <Pie
+                        data={{
+                            labels: ['Starting Balance', 'Income', 'Expenses'],
+                            datasets: [
+                                {
+                                    data: [startingBalance, incomeTotal, expenseTotal],
+                                    backgroundColor: [
+                                        'rgba(99, 102, 241, 0.8)',
+                                        'rgba(34, 197, 94, 0.8)',
+                                        'rgba(239, 68, 68, 0.8)',
+                                    ],
+                                    borderColor: [
+                                        'rgba(99, 102, 241, 1)',
+                                        'rgba(34, 197, 94, 1)',
+                                        'rgba(239, 68, 68, 1)',
+                                    ],
+                                    borderWidth: 2,
+                                    hoverOffset: 8,
+                                },
+                            ],
+                        }}
+                        options={{
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 20,
+                                        usePointStyle: true,
+                                        pointStyle: 'circle',
+                                        font: {
+                                            size: 13,
+                                            weight: 'bold' as const,
+                                        },
+                                    },
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    padding: 12,
+                                    titleFont: {
+                                        size: 14,
+                                        weight: 'bold' as const,
+                                    },
+                                    bodyFont: {
+                                        size: 13,
+                                    },
+                                    cornerRadius: 8,
+                                    callbacks: {
+                                        label: (context) => {
+                                            const value = context.parsed;
+                                            return ` ${formatCurrency(value)}`;
+                                        },
+                                    },
+                                },
+                            },
+                        }}
+                    />
+                </div>
             </section>
 
             {/* Transaction entry form */}
