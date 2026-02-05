@@ -19,12 +19,26 @@
 import React, { useMemo, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Pie } from 'react-chartjs-2';
+import { Doughnut } from 'react-chartjs-2';
 import { Transaction, TransactionType } from './types';
 import { computeTotals, computeEndingBalance, formatCurrency } from './lib/calculations';
 import TipOfDay from './components/TipOfDay';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+// Vibrant color palette for spending categories
+const CATEGORY_COLORS = [
+    '#F4D03F', // Yellow (Investments)
+    '#58D68D', // Green (Mortgage)
+    '#45B7AA', // Teal (Savings)
+    '#E97451', // Coral (Discretionary)
+    '#A569BD', // Purple (Food)
+    '#5DADE2', // Blue (Transport)
+    '#CD6155', // Brown (Insurance)
+    '#76D7C4', // Cyan (Phone)
+    '#F1948A', // Pink (Subscriptions)
+    '#85929E', // Gray
+];
 
 /**
  * Seed demo data shown on initial load. In a production scenario this
@@ -84,6 +98,30 @@ export default function App() {
         category: '',
         amount: ''
     });
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({ description: '', category: '', amount: '' });
+
+    function deleteTransaction(id: string) {
+        setTransactions(t => t.filter(tx => tx.id !== id));
+    }
+
+    function startEdit(t: Transaction) {
+        setEditingId(t.id);
+        setEditForm({ description: t.description, category: t.category, amount: String(t.amount) });
+    }
+
+    function saveEdit(id: string) {
+        const amountNum = Number(editForm.amount);
+        if (!amountNum || amountNum <= 0) return;
+        setTransactions(txs => txs.map(t => 
+            t.id === id ? { ...t, description: editForm.description, category: editForm.category, amount: amountNum } : t
+        ));
+        setEditingId(null);
+    }
+
+    function cancelEdit() {
+        setEditingId(null);
+    }
 
     // ----------------------------
     // Derived computations (memoized for cheap re-renders)
@@ -139,69 +177,8 @@ export default function App() {
                 <StatCard label="Ending Balance" value={formatCurrency(endingBalance)} highlight />
             </section>
 
-            {/* Income vs Expenses Pie Chart */}
-            <section className="bg-white shadow rounded-xl border border-gray-100 p-6">
-                <h2 className="font-semibold text-lg mb-4 text-center">Income vs Expenses</h2>
-                <div className="max-w-xs mx-auto">
-                    <Pie
-                        data={{
-                            labels: ['Starting Balance', 'Income', 'Expenses'],
-                            datasets: [
-                                {
-                                    data: [startingBalance, incomeTotal, expenseTotal],
-                                    backgroundColor: [
-                                        'rgba(99, 102, 241, 0.8)',
-                                        'rgba(34, 197, 94, 0.8)',
-                                        'rgba(239, 68, 68, 0.8)',
-                                    ],
-                                    borderColor: [
-                                        'rgba(99, 102, 241, 1)',
-                                        'rgba(34, 197, 94, 1)',
-                                        'rgba(239, 68, 68, 1)',
-                                    ],
-                                    borderWidth: 2,
-                                    hoverOffset: 8,
-                                },
-                            ],
-                        }}
-                        options={{
-                            responsive: true,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: {
-                                        padding: 20,
-                                        usePointStyle: true,
-                                        pointStyle: 'circle',
-                                        font: {
-                                            size: 13,
-                                            weight: 'bold' as const,
-                                        },
-                                    },
-                                },
-                                tooltip: {
-                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                    padding: 12,
-                                    titleFont: {
-                                        size: 14,
-                                        weight: 'bold' as const,
-                                    },
-                                    bodyFont: {
-                                        size: 13,
-                                    },
-                                    cornerRadius: 8,
-                                    callbacks: {
-                                        label: (context) => {
-                                            const value = context.parsed;
-                                            return ` ${formatCurrency(value)}`;
-                                        },
-                                    },
-                                },
-                            },
-                        }}
-                    />
-                </div>
-            </section>
+            {/* Monthly Spending Donut Chart */}
+            <SpendingDonutChart transactions={transactions} />
 
             {/* Transaction entry form */}
             <form onSubmit={addTransaction} className="bg-white shadow rounded-md p-4 space-y-4 border border-gray-100">
@@ -276,6 +253,7 @@ export default function App() {
                             <th className="text-left px-3 py-2">Description</th>
                             <th className="text-left px-3 py-2">Category</th>
                             <th className="text-right px-3 py-2">Amount</th>
+                            <th className="text-center px-3 py-2">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -288,12 +266,69 @@ export default function App() {
                                         <span className="text-red-600">Expense</span>
                                     )}
                                 </td>
-                                <td className="px-3 py-2">{t.description}</td>
-                                <td className="px-3 py-2 text-xs text-gray-500">{t.category}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">
-                                    {t.type === 'expense' ? '-' : ''}
-                                    {formatCurrency(t.amount)}
-                                </td>
+                                {editingId === t.id ? (
+                                    <>
+                                        <td className="px-3 py-2">
+                                            <input
+                                                value={editForm.description}
+                                                onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                                                className="w-full rounded border-gray-300 text-sm px-2 py-1"
+                                            />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <input
+                                                value={editForm.category}
+                                                onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                                                className="w-full rounded border-gray-300 text-sm px-2 py-1"
+                                            />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <input
+                                                type="number"
+                                                value={editForm.amount}
+                                                onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
+                                                className="w-full rounded border-gray-300 text-sm px-2 py-1 text-right"
+                                            />
+                                        </td>
+                                        <td className="px-3 py-2 text-center">
+                                            <button
+                                                onClick={() => saveEdit(t.id)}
+                                                className="text-green-600 hover:text-green-800 text-xs font-medium mr-2"
+                                            >
+                                                Save
+                                            </button>
+                                            <button
+                                                onClick={cancelEdit}
+                                                className="text-gray-500 hover:text-gray-700 text-xs font-medium"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </td>
+                                    </>
+                                ) : (
+                                    <>
+                                        <td className="px-3 py-2">{t.description}</td>
+                                        <td className="px-3 py-2 text-xs text-gray-500">{t.category}</td>
+                                        <td className="px-3 py-2 text-right tabular-nums">
+                                            {t.type === 'expense' ? '-' : ''}
+                                            {formatCurrency(t.amount)}
+                                        </td>
+                                        <td className="px-3 py-2 text-center">
+                                            <button
+                                                onClick={() => startEdit(t)}
+                                                className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => deleteTransaction(t.id)}
+                                                className="text-red-600 hover:text-red-800 text-xs font-medium"
+                                            >
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </>
+                                )}
                             </tr>
                         ))}
                     </tbody>
@@ -352,5 +387,155 @@ function StatCard({
                 {value}
             </span>
         </div>
+    );
+}
+
+/**
+ * Spending Donut Chart Component
+ * Shows expense breakdown by category in a donut chart with center total
+ */
+function SpendingDonutChart({ transactions }: { transactions: Transaction[] }) {
+    // Group expenses by category
+    const categoryData = useMemo(() => {
+        const expenses = transactions.filter(t => t.type === 'expense');
+        const categoryMap = new Map<string, number>();
+        
+        expenses.forEach(t => {
+            const current = categoryMap.get(t.category) || 0;
+            categoryMap.set(t.category, current + t.amount);
+        });
+        
+        // Sort by amount descending
+        const sorted = Array.from(categoryMap.entries())
+            .sort((a, b) => b[1] - a[1]);
+        
+        return {
+            labels: sorted.map(([cat]) => cat),
+            amounts: sorted.map(([, amt]) => amt),
+            total: sorted.reduce((sum, [, amt]) => sum + amt, 0)
+        };
+    }, [transactions]);
+
+    const chartData = {
+        labels: categoryData.labels,
+        datasets: [
+            {
+                data: categoryData.amounts,
+                backgroundColor: CATEGORY_COLORS.slice(0, categoryData.labels.length),
+                borderColor: 'rgba(255, 255, 255, 1)',
+                borderWidth: 2,
+                hoverOffset: 8,
+            },
+        ],
+    };
+
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '60%',
+        plugins: {
+            legend: {
+                display: false,
+            },
+            tooltip: {
+                backgroundColor: 'rgba(40, 40, 40, 0.95)',
+                padding: 14,
+                titleFont: {
+                    size: 14,
+                    weight: 'bold' as const,
+                },
+                bodyFont: {
+                    size: 13,
+                },
+                cornerRadius: 10,
+                callbacks: {
+                    label: (context: any) => {
+                        const value = context.parsed;
+                        const percentage = ((value / categoryData.total) * 100).toFixed(1);
+                        return ` ${formatCurrency(value)} (${percentage}%)`;
+                    },
+                },
+            },
+        },
+    };
+
+    return (
+        <section className="rounded-2xl p-6 bg-white shadow-lg border border-gray-100">
+            <h2 className="font-semibold text-lg mb-4 text-center text-gray-800">Monthly Spending</h2>
+            <div className="flex flex-col items-center">
+                {/* 3D effect container with perspective */}
+                <div 
+                    className="relative"
+                    style={{
+                        perspective: '800px',
+                        perspectiveOrigin: 'center center',
+                    }}
+                >
+                    {/* Shadow layer underneath */}
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            transform: 'rotateX(55deg) translateY(30px)',
+                            filter: 'blur(15px)',
+                            opacity: 0.3,
+                            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.6) 0%, transparent 70%)',
+                            borderRadius: '50%',
+                        }}
+                    />
+                    
+                    {/* Main chart with tilt */}
+                    <div
+                        className="relative w-[220px] h-[220px]"
+                        style={{
+                            transform: 'rotateX(45deg)',
+                            transformStyle: 'preserve-3d',
+                        }}
+                    >
+                        {/* Depth/thickness layer */}
+                        <div
+                            className="absolute inset-0"
+                            style={{
+                                transform: 'translateZ(-20px)',
+                                filter: 'brightness(0.7) blur(1px)',
+                            }}
+                        >
+                            <Doughnut data={chartData} options={chartOptions} />
+                        </div>
+                        
+                        {/* Main front surface */}
+                        <div className="relative">
+                            <Doughnut data={chartData} options={chartOptions} />
+                        </div>
+                        
+                        {/* Center label */}
+                        <div 
+                            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                            style={{ transform: 'translateZ(5px)' }}
+                        >
+                            <span className="text-gray-500 text-xs font-medium">Total</span>
+                            <span className="text-gray-800 text-lg font-bold">
+                                {formatCurrency(categoryData.total)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Category Labels */}
+                <div className="mt-8 grid grid-cols-2 gap-2 w-full max-w-[250px]">
+                    {categoryData.labels.map((label, index) => (
+                        <div key={label} className="flex items-center gap-1.5">
+                            <div 
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: CATEGORY_COLORS[index] }}
+                            />
+                            <span className="text-gray-700 text-xs truncate">{label}:</span>
+                            <span className="text-gray-900 text-xs font-semibold ml-auto">
+                                {formatCurrency(categoryData.amounts[index])}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
     );
 }
